@@ -19,11 +19,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
-require 'redmine'
-require 'issue_badge/application_hooks'
-require 'issue_badge/my_account_hooks'
-require 'issue_badge/my_controller_patch'
-
 # NOTE: Keep error message for a while to support Redmine3.x users.
 def issue_badge_version_message(original_message = nil)
   <<-"USAGE"
@@ -53,10 +48,11 @@ Redmine::Plugin.register :redmine_issue_badge do
                'number_to_display' => 5
              }
 
-    Rails.configuration.to_prepare do
-      require_dependency 'my_controller'
+    prepare = lambda do
       MyController.prepend IssueBadge::MyControllerPatch unless MyController.included_modules.include?(IssueBadge::MyControllerPatch)
     end
+    prepare.call if Redmine.const_defined?(:PluginLoader)
+    Rails.configuration.to_prepare(&prepare)
   rescue ::Redmine::PluginRequirementError => e
     raise ::Redmine::PluginRequirementError.new(issue_badge_version_message(e.message)) # rubocop:disable Style/RaiseArgs
   end
